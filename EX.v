@@ -11,6 +11,9 @@ module EX(
     output wire [37:0] ex_to_id_bus,
     output wire data_sram_en,
     output wire [3:0] data_sram_wen,
+    //pre表示数据送给ID，来自当前ID前一条指令的信息
+    output wire pre_inst_data_sram_en,
+    output wire [3:0] pre_inst_data_sram_wen,
     output wire [31:0] data_sram_addr,
     output wire [31:0] data_sram_wdata
 );
@@ -55,8 +58,8 @@ module EX(
         rf_we,          // 70
         rf_waddr,       // 69:65
         sel_rf_res,     // 64
-        rf_rdata1,         // 63:32
-        rf_rdata2          // 31:0
+        rf_rdata1,         // 63:32 对应ID段的rs
+        rf_rdata2          // 31:0 对应ID段的rt
     } = id_to_ex_bus_r;
 
     wire [31:0] imm_sign_extend, imm_zero_extend, sa_zero_extend;
@@ -97,6 +100,13 @@ module EX(
         rf_waddr,       // 36:32
         ex_result       // 31:0
     };
-    
-    
+
+    //新加的，和访存有有关
+    assign data_sram_en = data_ram_en;
+    assign data_sram_wen = data_ram_wen;
+    assign data_sram_addr = ex_result; //lw运算得到结果
+    assign data_sram_wdata = rf_rdata2;
+
+    assign pre_inst_data_sram_en = data_ram_en;
+    assign pre_inst_data_sram_wen = data_ram_wen; 
 endmodule

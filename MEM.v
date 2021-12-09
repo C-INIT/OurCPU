@@ -48,9 +48,13 @@ module MEM(
         ex_result       // 31:0
     } =  ex_to_mem_bus_r;
 
+    //添加lw时，发现mem_result为空值,data_sram_rdata为所需要的值，而data_sram_rdata的变量没用到
+    //所有需要添加这段
+    assign mem_result = data_sram_rdata;
 
-
+    //lw这一步时需要修改ID段的sel_rf_res，表示接受来自load的数据
     assign rf_wdata = sel_rf_res ? mem_result : ex_result;
+    //assign rf_wdata = sel_rf_res ? mem_result : ex_result;
 
     assign mem_to_wb_bus = {
         mem_pc,     // 69:38
