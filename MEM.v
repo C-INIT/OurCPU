@@ -48,11 +48,11 @@ module MEM(
         ex_result       // 31:0
     } =  ex_to_mem_bus_r;
 
-    //æ·»åŠ lwæ—¶ï¼Œå‘ç°mem_resultä¸ºç©ºå€¼,data_sram_rdataä¸ºæ‰€éœ€è¦çš„å€¼ï¼Œè€Œdata_sram_rdataçš„å˜é‡æ²¡ç”¨åˆ°
-    //æ‰€æœ‰éœ€è¦æ·»åŠ è¿™æ®µ
+    //Ìí¼ÓlwÊ±£¬·¢ÏÖmem_resultÎª¿ÕÖµ,data_sram_rdataÎªËùĞèÒªµÄÖµ£¬¶ødata_sram_rdataµÄ±äÁ¿Ã»ÓÃµ½
+    //ËùÓĞĞèÒªÌí¼ÓÕâ¶Î
     assign mem_result = data_sram_rdata;
 
-    //lwè¿™ä¸€æ­¥æ—¶éœ€è¦ä¿®æ”¹IDæ®µçš„sel_rf_resï¼Œè¡¨ç¤ºæ¥å—æ¥è‡ªloadçš„æ•°æ®
+    //lwÕâÒ»²½Ê±ĞèÒªĞŞ¸ÄID¶ÎµÄsel_rf_res£¬±íÊ¾½ÓÊÜÀ´×ÔloadµÄÊı¾İ
     assign rf_wdata = sel_rf_res ? mem_result : ex_result;
     //assign rf_wdata = sel_rf_res ? mem_result : ex_result;
 

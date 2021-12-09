@@ -11,7 +11,7 @@ module EX(
     output wire [37:0] ex_to_id_bus,
     output wire data_sram_en,
     output wire [3:0] data_sram_wen,
-    //pre琛ㄧず鏁版嵁閫佺粰ID锛屾潵鑷綋鍓岻D鍓嶄竴鏉℃寚浠ょ殑淇℃伅
+    //pre表示数据送给ID，来自当前ID前一条指令的信息
     output wire pre_inst_data_sram_en,
     output wire [3:0] pre_inst_data_sram_wen,
     output wire [31:0] data_sram_addr,
@@ -58,8 +58,8 @@ module EX(
         rf_we,          // 70
         rf_waddr,       // 69:65
         sel_rf_res,     // 64
-        rf_rdata1,         // 63:32 瀵瑰簲ID娈电殑rs
-        rf_rdata2          // 31:0 瀵瑰簲ID娈电殑rt
+        rf_rdata1,         // 63:32 对应ID段的rs
+        rf_rdata2          // 31:0 对应ID段的rt
     } = id_to_ex_bus_r;
 
     wire [31:0] imm_sign_extend, imm_zero_extend, sa_zero_extend;
@@ -101,12 +101,118 @@ module EX(
         ex_result       // 31:0
     };
 
-    //鏂板姞鐨勶紝鍜岃瀛樻湁鏈夊叧
+       //新加的，和访存有有关
     assign data_sram_en = data_ram_en;
     assign data_sram_wen = data_ram_wen;
-    assign data_sram_addr = ex_result; //lw杩愮畻寰楀埌缁撴灉
+    assign data_sram_addr = ex_result; //lw运算得到结果
     assign data_sram_wdata = rf_rdata2;
 
     assign pre_inst_data_sram_en = data_ram_en;
     assign pre_inst_data_sram_wen = data_ram_wen; 
+    
+        // MUL part
+    wire [63:0] mul_result;
+    wire mul_signed; // 有符号乘法标记
+
+    mul u_mul(
+    	.clk        (clk            ),
+        .resetn     (~rst           ),
+        .mul_signed (mul_signed     ),
+        .ina        (      ), // 乘法源操作数1
+        .inb        (      ), // 乘法源操作数2
+        .result     (mul_result     ) // 乘法结果 64bit
+    );
+    
+    // DIV part
+    wire [63:0] div_result;
+    wire inst_div, inst_divu;
+    wire div_ready_i;
+    reg stallreq_for_div;
+    assign stallreq_for_ex = stallreq_for_div;
+
+    reg [31:0] div_opdata1_o;
+    reg [31:0] div_opdata2_o;
+    reg div_start_o;
+    reg signed_div_o;
+
+
+    //div part
+    div u_div(
+    	.rst          (rst          ),
+        .clk          (clk          ),
+        .signed_div_i (signed_div_o ),
+        .opdata1_i    (div_opdata1_o    ),
+        .opdata2_i    (div_opdata2_o    ),
+        .start_i      (div_start_o      ),
+        .annul_i      (1'b0      ),
+        .result_o     (div_result     ), // 除法结果 64bit
+        .ready_o      (div_ready_i      )
+    );
+
+    always @ (*) begin
+        if (rst) begin
+            stallreq_for_div = `NoStop;
+            div_opdata1_o = `ZeroWord;
+            div_opdata2_o = `ZeroWord;
+            div_start_o = `DivStop;
+            signed_div_o = 1'b0;
+        end
+        else begin
+            stallreq_for_div = `NoStop;
+            div_opdata1_o = `ZeroWord;
+            div_opdata2_o = `ZeroWord;
+            div_start_o = `DivStop;
+            signed_div_o = 1'b0;
+            case ({inst_div,inst_divu})
+                2'b10:begin
+                    if (div_ready_i == `DivResultNotReady) begin
+                        div_opdata1_o = rf_rdata1;
+                        div_opdata2_o = rf_rdata2;
+                        div_start_o = `DivStart;
+                        signed_div_o = 1'b1;
+                        stallreq_for_div = `Stop;
+                    end
+                    else if (div_ready_i == `DivResultReady) begin
+                        div_opdata1_o = rf_rdata1;
+                        div_opdata2_o = rf_rdata2;
+                        div_start_o = `DivStop;
+                        signed_div_o = 1'b1;
+                        stallreq_for_div = `NoStop;
+                    end
+                    else begin
+                        div_opdata1_o = `ZeroWord;
+                        div_opdata2_o = `ZeroWord;
+                        div_start_o = `DivStop;
+                        signed_div_o = 1'b0;
+                        stallreq_for_div = `NoStop;
+                    end
+                end
+                2'b01:begin
+                    if (div_ready_i == `DivResultNotReady) begin
+                        div_opdata1_o = rf_rdata1;
+                        div_opdata2_o = rf_rdata2;
+                        div_start_o = `DivStart;
+                        signed_div_o = 1'b0;
+                        stallreq_for_div = `Stop;
+                    end
+                    else if (div_ready_i == `DivResultReady) begin
+                        div_opdata1_o = rf_rdata1;
+                        div_opdata2_o = rf_rdata2;
+                        div_start_o = `DivStop;
+                        signed_div_o = 1'b0;
+                        stallreq_for_div = `NoStop;
+                    end
+                    else begin
+                        div_opdata1_o = `ZeroWord;
+                        div_opdata2_o = `ZeroWord;
+                        div_start_o = `DivStop;
+                        signed_div_o = 1'b0;
+                        stallreq_for_div = `NoStop;
+                    end
+                end
+                default:begin
+                end
+            endcase
+        end
+    end
 endmodule
