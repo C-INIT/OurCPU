@@ -5,21 +5,13 @@ module regfile(
     output wire [31:0] rdata1,
     input wire [4:0] raddr2,
     output wire [31:0] rdata2,
-    
-    //LL 数据相关
-    input wire pre_ex_w_hi_we,           
-    input wire pre_ex_w_lo_we,           
-    input wire [31:0] pre_ex_w_hi_i,                
-    input wire [31:0] pre_ex_w_lo_i,
-    input wire pre_mem_w_hi_we,           
-    input wire pre_mem_w_lo_we,           
-    input wire [31:0] pre_mem_w_hi_i,                
-    input wire [31:0] pre_mem_w_lo_i,
-    input wire pre_wb_w_hi_we,           
-    input wire pre_wb_w_lo_we,           
-    input wire [31:0] pre_wb_w_hi_i,                
-    input wire [31:0] pre_wb_w_lo_i,    
-     //LL
+    input wire [37:0] ex_to_id_bus,
+    input wire[37:0] mem_to_id_bus,
+    input wire[37:0] wb_to_id_bus,
+    input wire we,
+    input wire [4:0] waddr,
+    input wire [31:0] wdata,
+
     input wire w_hi_we,
     input wire w_lo_we,
     input wire r_hi_we,
@@ -27,43 +19,75 @@ module regfile(
     input wire [31:0] w_hi_i,
     input wire [31:0] w_lo_i,
     output wire [31:0] hi_out_file,
-    output wire [31:0] lo_out_file,
-    
-    //数据相关ex mem wb
-    input wire ex_to_id_we,         
-    input wire [31:0] ex_to_id_waddr,     
-    input wire [31:0] ex_result,     
-    input wire mem_to_id_we,         
-    input wire [31:0] mem_to_id_waddr,       
-    input wire [31:0] mem_result,             
-    input wire wb_to_id_we,
-    input wire [31:0] wb_to_id_waddr,
-    input wire [31:0] wb_to_id_result,
-    input wire we,
-    input wire [4:0] waddr,
-    input wire [31:0] wdata
+    output wire [31:0] lo_out_file
 );
     reg [31:0] reg_array [31:0];
-    reg [31:0] reg_array_hi ;
-    reg [31:0] reg_array_lo ;
+    reg [31:0] reg_array_hi;
+    reg [31:0] reg_array_lo;
     // write
     always @ (posedge clk) begin
         if (we && waddr!=5'b0) begin
             reg_array[waddr] <= wdata;
         end
     end
-    //write hilo
-    always @ (posedge clk) begin
-        if (w_hi_we) begin
-            reg_array_hi <= w_hi_i;
-        end
-        if(w_lo_we) begin
-            reg_array_lo <= w_lo_i;
-        end
-    end
+
+    wire ex_to_id_we;
+    wire [4:0] ex_to_id_waddr;
+    wire [31:0] ex_result;
+    wire ex_w_hi_we;           
+    wire ex_w_lo_we;           
+    wire [31:0] ex_w_hi_i;                
+    wire [31:0] ex_w_lo_i;
+    
+    wire mem_to_id_we;
+    wire [4:0] mem_to_id_waddr;
+    wire [31:0] mem_result;
+    wire mem_w_hi_we;           
+    wire mem_w_lo_we;           
+    wire [31:0] mem_w_hi_i;                
+    wire [31:0] mem_w_lo_i;
+    
+    wire wb_to_id_we;
+    wire [4:0] wb_to_id_waddr;
+    wire [31:0] wb_to_id_result;
+    wire wb_w_hi_we;           
+    wire wb_w_lo_we;           
+    wire [31:0] wb_w_hi_i;                
+    wire [31:0] wb_w_lo_i; 
+    
+    assign {
+        ex_w_hi_we,        // 103
+        ex_w_hi_i,         // 102:71
+        ex_w_lo_we,        // 70
+        ex_w_lo_i,         // 69:38  
+        ex_to_id_we,          // 37
+        ex_to_id_waddr,       // 36:32
+        ex_result       // 31:0
+    } =  ex_to_id_bus;
+
+    assign {
+        mem_w_hi_we,    // 103
+        mem_w_hi_i,     // 102:71
+        mem_w_lo_we,    // 70
+        mem_w_lo_i,     // 69:38
+        mem_to_id_we,          // 37
+        mem_to_id_waddr,       // 36:32
+        mem_result       // 31:0
+    } =  mem_to_id_bus;   
+    
+    assign {
+        wb_w_hi_we,    
+        wb_w_hi_i,     
+        wb_w_lo_we,    
+        wb_w_lo_i,
+        wb_to_id_we,          // 37
+        wb_to_id_waddr,       // 36:32
+        wb_to_id_result       // 31:0
+    } =  wb_to_id_bus;    
 
 
-    // read out1
+
+    // read out 1
     assign rdata1 = (raddr1 == 5'b0) ? 32'b0 :
                     ((raddr1== ex_to_id_waddr) & ex_to_id_we) ? ex_result :
                     ((raddr1== mem_to_id_waddr) & mem_to_id_we) ? mem_result : 
@@ -72,17 +96,25 @@ module regfile(
     assign rdata2 = (raddr2 == 5'b0) ? 32'b0 :
                     ((raddr2== ex_to_id_waddr) & ex_to_id_we) ? ex_result :
                     ((raddr2== mem_to_id_waddr) & mem_to_id_we) ? mem_result : 
-                    ((raddr2== wb_to_id_waddr) & wb_to_id_we) ? wb_to_id_result : reg_array[raddr2]; 
+                    ((raddr2== wb_to_id_waddr) & wb_to_id_we) ? wb_to_id_result : reg_array[raddr2];
+    // // read hi
+    // assign hi_out_file = (ex_w_hi_we) ? ex_w_hi_i:
+    //                 (mem_w_hi_we) ? mem_w_hi_i:
+    //                 (wb_w_hi_we) ? wb_w_hi_i :
+    //                 (r_hi_we) ? w_hi_i : 32'b0;
+    // //read lo
+    // assign lo_out_file = (ex_w_lo_we) ? ex_w_lo_i:
+    //                 (mem_w_lo_we) ? mem_w_lo_i:
+    //                 (wb_w_lo_we) ? wb_w_lo_i :
+    //                 (r_lo_we) ? w_lo_i :32'b0;
     // read hi
-    assign hi_out_file = (pre_ex_w_hi_we) ? pre_ex_w_hi_i:
-                    (pre_mem_w_hi_we) ? pre_mem_w_hi_i:
-                    (pre_wb_w_hi_we) ? pre_wb_w_hi_i :
-                    (r_hi_we) ? w_hi_i : 32'b0;
+    assign hi_out_file = (ex_w_hi_we) ? ex_w_hi_i:
+                    (mem_w_hi_we) ? mem_w_hi_i:
+                    (wb_w_hi_we) ? wb_w_hi_i :
+                    (w_hi_we) ? w_hi_i : 32'b0;
     //read lo
-    assign lo_out_file = (pre_ex_w_lo_we) ? pre_ex_w_lo_i:
-                    (pre_mem_w_lo_we) ? pre_mem_w_lo_i:
-                    (pre_wb_w_lo_we) ? pre_wb_w_lo_i :
-                    (r_lo_we) ? w_lo_i :32'b0;
-               
-          
+    assign lo_out_file = (ex_w_lo_we) ? ex_w_lo_i:
+                    (mem_w_lo_we) ? mem_w_lo_i:
+                    (wb_w_lo_we) ? wb_w_lo_i :
+                    (w_lo_we) ? w_lo_i :32'b0;                
 endmodule

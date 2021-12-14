@@ -18,34 +18,36 @@ module ID(
     input wire [`WB_TO_RF_WD-1:0] wb_to_rf_bus,
 
     input wire [`WB_TO_ID_WD-1:0] wb_to_id_bus,  
-    //ÉÏÒ»ÌõÖ¸ÁîµÄ¶ÁĞ´Ïà¹Ø²Ù×÷
+
+    //ä¸Šä¸€æ¡æŒ‡ä»¤çš„è¯»å†™ç›¸å…³æ“ä½œ
     input wire pre_inst_data_sram_en,
     input wire [3:0] pre_inst_data_sram_wen,
 
     output wire [`ID_TO_EX_WD-1:0] id_to_ex_bus,
-    
-    output wire [`BR_WD-1:0] br_bus
+
+    output wire [`BR_WD-1:0] br_bus 
 );
 
     reg [`IF_TO_ID_WD-1:0] if_to_id_bus_r;
     wire [31:0] inst;
     wire [31:0] id_pc;
     wire ce;
-    
 
-      
     wire wb_rf_we;
     wire [4:0] wb_rf_waddr;
     wire [31:0] wb_rf_wdata;
-    
+
     wire [31:0] hi_out_file;        
-    wire [31:0] lo_out_file;      
-    
+    wire [31:0] lo_out_file;
 
+    wire w_hi_we;    
+    wire [31:0] w_hi_i;     
+    wire w_lo_we;    
+    wire [31:0] w_lo_i;    
 
-    //ÎªÁË±£Ö¤PCºÍinstÍ¬²½£¬Ê¹ÓÃinst_regÔÚ³öÏÖload¶ÁĞ´³åÍ»Ê±´¢´æÖ¸Áî
+    //ä¸ºäº†ä¿è¯PCå’ŒinståŒæ­¥ï¼Œä½¿ç”¨inst_regåœ¨å‡ºç°loadè¯»å†™å†²çªæ—¶å‚¨å­˜æŒ‡ä»¤
     //assign inst = inst_sram_rdata;
-    //instÔİ´æÆ÷
+    //instæš‚å­˜å™¨
     reg [31:0] inst_reg;
     reg inst_reg_en;
     always @ (posedge clk) begin
@@ -64,21 +66,21 @@ module ID(
         end
     end
     
-    //ÎªÁË±£Ö¤PCºÍinstÍ¬²½£¬Ê¹ÓÃinst_regÔÚ³öÏÖload¶ÁĞ´³åÍ»Ê±´¢´æÖ¸Áî
+    //ä¸ºäº†ä¿è¯PCå’ŒinståŒæ­¥ï¼Œä½¿ç”¨inst_regåœ¨å‡ºç°loadè¯»å†™å†²çªæ—¶å‚¨å­˜æŒ‡ä»¤
     //assign inst = inst_sram_rdata;
-    //instÔİ´æÆ÷ Õâ¸ö¶¨Òå·ÅÉÏÃæÁË
+    //instæš‚å­˜å™¨ è¿™ä¸ªå®šä¹‰æ”¾ä¸Šé¢äº†
     // reg [31:0] inst_reg;
     // reg inst_reg_en;
     assign inst = inst_reg_en == 1'b0 ? inst_sram_rdata : inst_reg;
     assign {
         ce,
         id_pc
-    } = if_to_id_bus_r;
+    } = if_to_id_bus_r;  
     assign {
         w_hi_we,    
         w_hi_i,     
         w_lo_we,    
-        w_lo_i, 
+        w_lo_i,
         wb_rf_we,
         wb_rf_waddr,
         wb_rf_wdata
@@ -86,52 +88,20 @@ module ID(
     wire pre_ex_w_hi_we;        
     wire [31:0] pre_ex_w_hi_i;        
     wire pre_ex_w_lo_we;        
-    wire [31:0] pre_ex_w_lo_i;       
+    wire [31:0] pre_ex_w_lo_i; 
     wire pre_ex_to_id_we;
     wire [4:0] pre_ex_to_id_waddr;
     wire [31:0] pre_ex_result;
+
     assign {
         pre_ex_w_hi_we,        // 103
         pre_ex_w_hi_i,         // 102:71
         pre_ex_w_lo_we,        // 70
-        pre_ex_w_lo_i,         // 69:38       
+        pre_ex_w_lo_i,         // 69:38  
         pre_ex_to_id_we,          // 37
         pre_ex_to_id_waddr,       // 36:32
         pre_ex_result       // 31:0
-    } =  ex_to_id_bus; //Ö÷ÒªÓÃÇ°Á½ÌõÅĞ¶ÏÊÇ·ñÉÏÒ»ÌõÖ¸ÁîÔÚ½øĞĞload»òstore²Ù×÷
-    
-    wire pre_mem_w_hi_we;        
-    wire [31:0] pre_mem_w_hi_i;         
-    wire pre_mem_w_lo_we;        
-    wire [31:0]pre_mem_w_lo_i;     
-    wire mem_to_id_we;
-    wire [4:0] mem_to_id_waddr;
-    wire [31:0] mem_result;    
-    assign {
-        pre_mem_w_hi_we,        // 103
-        pre_mem_w_hi_i,         // 102:71
-        pre_mem_w_lo_we,        // 70
-        pre_mem_w_lo_i,         // 69:38
-        mem_to_id_we,          // 37
-        mem_to_id_waddr,       // 36:32
-        mem_result             // 31:0
-    } =  mem_to_id_bus;
-    wire pre_wb_w_hi_we;    
-    wire [31:0] pre_wb_w_hi_i;     
-    wire pre_wb_w_lo_we;    
-    wire [31:0] pre_wb_w_lo_i;
-    wire rf_we;
-    wire [4:0] rf_waddr;
-    wire [31:0] rf_wdata;
-    assign {
-        pre_wb_w_hi_we,    
-        pre_wb_w_hi_i,     
-        pre_wb_w_lo_we,    
-        pre_wb_w_lo_i, 
-        rf_we,
-        rf_waddr,
-        rf_wdata
-    }= wb_to_id_bus ;
+    } =  ex_to_id_bus; //ä¸»è¦ç”¨å‰ä¸¤æ¡åˆ¤æ–­æ˜¯å¦ä¸Šä¸€æ¡æŒ‡ä»¤åœ¨è¿›è¡Œloadæˆ–storeæ“ä½œ
 
     wire [5:0] opcode;
     wire [4:0] rs,rt,rd,sa;
@@ -150,58 +120,35 @@ module ID(
     wire [3:0] sel_alu_src2;
     wire [11:0] alu_op;
 
-
     wire data_ram_en;
     wire [3:0] data_ram_wen;
     
+    wire rf_we;
+    wire [4:0] rf_waddr;
     wire sel_rf_res;
     wire [2:0] sel_rf_dst;
 
     wire [31:0] rdata1, rdata2;
 
-
     regfile u_regfile(
     	.clk    (clk    ),
-    	// Êı¾İÏà¹Øex mem wb
-    	.ex_to_id_we(pre_ex_to_id_we),         
-        .ex_to_id_waddr(pre_ex_to_id_waddr),     
-        .ex_result(pre_ex_result),     
-        .mem_to_id_we(mem_to_id_we),         
-        .mem_to_id_waddr(mem_to_id_waddr),       
-        .mem_result(mem_result),             
-        .wb_to_id_we(rf_we),
-        .wb_to_id_waddr(rf_waddr),
-        .wb_to_id_result(rf_wdata),
-        
-        
+    	.ex_to_id_bus(ex_to_id_bus),
+    	.mem_to_id_bus(mem_to_id_bus),
+        .wb_to_id_bus(wb_to_id_bus),
         .raddr1 (rs ),
         .rdata1 (rdata1 ),
         .raddr2 (rt ),
         .rdata2 (rdata2 ),
-        //³£¹æhilo
+        .we     (wb_rf_we     ),
+        .waddr  (wb_rf_waddr  ),
+        .wdata  (wb_rf_wdata  ),
+        //å¸¸è§„hilo
         .w_hi_we(w_hi_we),           
         .w_lo_we(w_lo_we),           
         .w_hi_i(w_hi_i),                
         .w_lo_i(w_lo_i),
         .hi_out_file(hi_out_file),
-        .lo_out_file(lo_out_file),
-        //Êı¾İÏà¹Øhilo
-        .pre_ex_w_hi_we(pre_ex_w_hi_we),           
-        .pre_ex_w_lo_we(pre_ex_w_lo_we),           
-        .pre_ex_w_hi_i(pre_ex_w_hi_i),                
-        .pre_ex_w_lo_i(pre_ex_w_lo_i),
-        .pre_mem_w_hi_we(pre_mem_w_hi_we),           
-        .pre_mem_w_lo_we(pre_mem_w_lo_we),           
-        .pre_mem_w_hi_i(pre_mem_w_hi_i),                
-        .pre_mem_w_lo_i(pre_mem_w_lo_i),
-        .pre_wb_w_hi_we(pre_wb_w_hi_we),           
-        .pre_wb_w_lo_we(pre_wb_w_lo_we),           
-        .pre_wb_w_hi_i(pre_wb_w_hi_i),                
-        .pre_wb_w_lo_i(pre_wb_w_lo_i),      
-
-        .we     (wb_rf_we     ),
-        .waddr  (wb_rf_waddr  ),
-        .wdata  (wb_rf_wdata  )
+        .lo_out_file(lo_out_file)
     );
 
     assign opcode = inst[31:26];
@@ -222,8 +169,7 @@ module ID(
     wire inst_sltu,inst_bne,inst_slt,inst_slti,inst_sltiu,inst_j,inst_srlv,inst_srl,inst_bgtz,inst_add;
     wire inst_movn,inst_movz,inst_mfhi,inst_mflo,inst_mthi,inst_mtlo;  
     wire inst_div, inst_divu, inst_mult, inst_multu;
-    wire inst_bgez,inst_blez,inst_bltz,inst_bgezal,inst_jalr ;
-    
+    wire inst_bgez,inst_blez,inst_bltz,inst_bltzal,inst_bgezal,inst_jalr;
     wire op_add, op_sub, op_slt, op_sltu;
     wire op_and, op_nor, op_or, op_xor;
     wire op_sll, op_srl, op_sra, op_lui;
@@ -293,7 +239,7 @@ module ID(
     assign inst_bltz = op_d[6'b00_0001] & (rt == 5'b00000);
     assign inst_bltzal = op_d[6'b00_0001] & (rt == 5'b10000);
     assign inst_bgezal = op_d[6'b00_0001] & (rt == 5'b10001);
-
+    
     assign inst_movn    = op_d[6'b00_0000]&(sa==5'b00000)&(func==6'b00_1011);
     assign inst_movz    = op_d[6'b00_0000]&(sa==5'b00000)&(func==6'b00_1010);
     assign inst_mfhi    = op_d[6'b00_0000]&(inst[25:16]==10'b00000_00000)&(sa==5'b00000)&(func==6'b01_0000);
@@ -306,8 +252,7 @@ module ID(
     assign inst_mult    = op_d[6'b00_0000]&(inst[15:6]==10'b00000_00000)&(func==6'b01_1000);
     assign inst_multu   = op_d[6'b00_0000]&(inst[15:6]==10'b00000_00000)&(func==6'b01_1001);
 
-
-    // rs to reg1 Ö¸Áî²»Ò»¶¨ÏÔÊ¾ÊÇrs£¬¿ÉÄÜÊÇbase¼Ä´æÆ÷£¬µ«¶ÔÓ¦rs¼Ä´æÆ÷
+    // rs to reg1 æŒ‡ä»¤ä¸ä¸€å®šæ˜¾ç¤ºæ˜¯rsï¼Œå¯èƒ½æ˜¯baseå¯„å­˜å™¨ï¼Œä½†å¯¹åº”rså¯„å­˜å™¨
     assign sel_alu_src1[0] = inst_ori | inst_addiu | inst_subu | inst_addu | inst_or | inst_lw | inst_sw | inst_xor
         | inst_and | inst_sltu | inst_slt | inst_slti | inst_sltiu | inst_srlv | inst_beq | inst_bne | inst_bgtz|inst_bltz
         | inst_add | inst_jr | inst_addi | inst_sub|inst_andi| inst_nor|inst_xori|inst_sllv| inst_srav|inst_bgez |inst_blez
@@ -321,7 +266,7 @@ module ID(
     assign sel_alu_src1[2] = inst_sll | inst_srl|inst_sra;
 
     
-    // rt to reg2 ²»ÊÇ¿´µ½rt¾Í¼ÓÔÚÕâÀï£¬ÓĞÊ±rtÊÇÒª´æµÄ£¬¶ø²»ÊÇ¶ÁÈ¡µÄ£¬²»ÄÜ¼ÓÔÚÕâÀï
+    // rt to reg2 ä¸æ˜¯çœ‹åˆ°rtå°±åŠ åœ¨è¿™é‡Œï¼Œæœ‰æ—¶rtæ˜¯è¦å­˜çš„ï¼Œè€Œä¸æ˜¯è¯»å–çš„ï¼Œä¸èƒ½åŠ åœ¨è¿™é‡Œ
     assign sel_alu_src2[0] = inst_subu |inst_addu | inst_sll | inst_or | inst_xor | inst_and | inst_sltu
         | inst_slt | inst_srlv | inst_srl | inst_beq | inst_bne | inst_add | inst_sub|inst_nor|inst_sllv |inst_sra| inst_srav
         | inst_div | inst_divu| inst_mult| inst_multu;
@@ -334,7 +279,6 @@ module ID(
 
     // imm_zero_extend to reg2
     assign sel_alu_src2[3] = inst_ori|inst_andi|inst_xori;
-    
 
 
 
@@ -350,7 +294,6 @@ module ID(
     assign op_srl = inst_srlv | inst_srl;
     assign op_sra = inst_sra| inst_srav;
     assign op_lui = inst_lui;
-
     
 
     assign alu_op = {op_add, op_sub, op_slt, op_sltu,
@@ -358,13 +301,12 @@ module ID(
                      op_sll, op_srl, op_sra, op_lui};
 
 
-    //ºÍ·Ã´æÓĞ¹Ø
+    //å’Œè®¿å­˜æœ‰å…³
     // load and store enable
     assign data_ram_en = inst_lw | inst_sw;
 
-    // write enable Ğ´´æ´¢Æ÷Ôò´«Èë1111£¬²»ÊÇÔòÊÇ0000£¬µ÷»»Ë³Ğò»á±¨´í
+    // write enable å†™å­˜å‚¨å™¨åˆ™ä¼ å…¥1111ï¼Œä¸æ˜¯åˆ™æ˜¯0000ï¼Œè°ƒæ¢é¡ºåºä¼šæŠ¥é”™
     assign data_ram_wen = inst_sw ? 4'b1111:4'b0000;
-
     wire hi_read; 
     wire lo_read; 
     wire hi_write;
@@ -373,23 +315,22 @@ module ID(
     assign hi_read = inst_mfhi;                     
     assign lo_read = inst_mflo;                         
     assign hi_write = inst_mthi;                         
-    assign lo_write = inst_mtlo;                        
-    //ÅĞ¶ÏÊÇ·ñ¼ÓÆøÅİ
-    //Òª¶ÁÈ¡µÄreg1ÊÇ·ñÓëÉÏÒ»ÌõÖ¸Áî´æÔÚloadÏà¹Ø
+    assign lo_write = inst_mtlo; 
+    //åˆ¤æ–­æ˜¯å¦åŠ æ°”æ³¡
+    //è¦è¯»å–çš„reg1æ˜¯å¦ä¸ä¸Šä¸€æ¡æŒ‡ä»¤å­˜åœ¨loadç›¸å…³
     wire stallreq_for_reg1_dataRelate;
-    //Òª¶ÁÈ¡µÄreg2ÊÇ·ñÓëÉÏÒ»ÌõÖ¸Áî´æÔÚloadÏà¹Ø
+    //è¦è¯»å–çš„reg2æ˜¯å¦ä¸ä¸Šä¸€æ¡æŒ‡ä»¤å­˜åœ¨loadç›¸å…³
     wire stallreq_for_reg2_dataRelate;
 
-    // //ÅĞ¶ÏÊÇ·ñ¼ÓÆøÅİ
-    // //Òª¶ÁÈ¡µÄreg1ÊÇ·ñÓëÉÏÒ»ÌõÖ¸Áî´æÔÚloadÏà¹Ø
+    // //åˆ¤æ–­æ˜¯å¦åŠ æ°”æ³¡
+    // //è¦è¯»å–çš„reg1æ˜¯å¦ä¸ä¸Šä¸€æ¡æŒ‡ä»¤å­˜åœ¨loadç›¸å…³
     // reg stallreq_for_reg1_dataRelate;
-    // //Òª¶ÁÈ¡µÄreg2ÊÇ·ñÓëÉÏÒ»ÌõÖ¸Áî´æÔÚloadÏà¹Ø
+    // //è¦è¯»å–çš„reg2æ˜¯å¦ä¸ä¸Šä¸€æ¡æŒ‡ä»¤å­˜åœ¨loadç›¸å…³
     // reg stallreq_for_reg2_dataRelate;
 
-    //ÉÏÒ»ÌõÖ¸ÁîÊÇ·ñÎªload
+    //ä¸Šä¸€æ¡æŒ‡ä»¤æ˜¯å¦ä¸ºload
     wire pre_inst_is_load;
     assign pre_inst_is_load = pre_inst_data_sram_en & (pre_inst_data_sram_wen == 4'b0000);
-
 
 
 
@@ -407,7 +348,7 @@ module ID(
     //         stallreq_for_reg2_loadRelate <= `NoStop;
 	// end
 
-    //±£Ö¤instºÍPCÍ¬²½£¬inst_reg_enÎª1£¬Ôò±íÊ¾inst_regÀïÃæµÄĞèÒªÓÃ
+    //ä¿è¯instå’ŒPCåŒæ­¥ï¼Œinst_reg_enä¸º1ï¼Œåˆ™è¡¨ç¤ºinst_regé‡Œé¢çš„éœ€è¦ç”¨
     always @ (stallreq_for_id) begin
         inst_reg <= inst;
         inst_reg_en <= 1'b1;
@@ -416,15 +357,14 @@ module ID(
     // regfile store enable
     assign rf_we = inst_ori | inst_lui | inst_addiu | inst_subu | inst_jal |inst_addu | inst_sll | inst_or | inst_lw
         | inst_xor | inst_and | inst_sltu | inst_slt | inst_slti | inst_sltiu | inst_srlv | inst_srl | inst_add
-        | inst_addi| inst_sub|inst_andi|inst_nor|inst_xori|inst_sllv|inst_sra|inst_srav|inst_bltzal |inst_bgezal|inst_jalr
+        | inst_addi | inst_sub|inst_andi|inst_nor|inst_xori|inst_sllv|inst_sra|inst_srav|inst_bltzal |inst_bgezal|inst_jalr
         | inst_mflo| inst_mfhi;
-
 
 
     // store in [rd]
     assign sel_rf_dst[0] = inst_subu | inst_addu | inst_sll | inst_or | inst_xor | inst_and | inst_sltu
-                             | inst_slt | inst_srlv | inst_srl | inst_add | inst_sub|inst_nor|inst_sllv|inst_sra | inst_srav|inst_jalr
-                             | inst_mflo| inst_mfhi ;
+        | inst_slt | inst_srlv | inst_srl | inst_add | inst_sub|inst_nor|inst_sllv|inst_sra | inst_srav|inst_jalr
+        | inst_mflo| inst_mfhi ;
     // store in [rt] 
     assign sel_rf_dst[1] = inst_ori | inst_lui | inst_addiu | inst_lw | inst_slti | inst_sltiu | inst_addi|inst_andi|inst_xori;
     // store in [31]
@@ -438,7 +378,6 @@ module ID(
     // 0 from alu_res ; 1 from ld_res
     //assign sel_rf_res = 1'b0; 
     assign sel_rf_res = inst_lw; 
-    assign lo_read =inst_mflo;
 
     assign id_to_ex_bus = {
         hi_read,        //226
@@ -460,7 +399,6 @@ module ID(
         rdata1,         // 63:32
         rdata2          // 31:0
     };
-
 
 
     wire br_e;

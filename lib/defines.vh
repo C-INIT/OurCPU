@@ -4,6 +4,7 @@
 `define MEM_TO_WB_WD 136
 `define BR_WD 33
 `define DATA_SRAM_WD 69
+
 `define WB_TO_RF_WD 104
 `define EX_TO_ID_WD 104
 `define MEM_TO_ID_WD 104
@@ -13,9 +14,9 @@
 `define NoStop 1'b0
 `define Stop 1'b1
 
-//加法
+//录脫路篓
 `define ZeroWord 32'b0
-//除法div
+//鲁媒路篓div
 `define DivFree 2'b00
 `define DivByZero 2'b01
 `define DivOn 2'b10
