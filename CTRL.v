@@ -4,7 +4,7 @@ module CTRL(
     // input wire stallreq_for_ex,
     // input wire stallreq_for_load,
 
-    //æš‚åœæœºåˆ¶
+    //ÔİÍ£»úÖÆ
     input wire stallreq_for_ex,
     input wire stallreq_for_id,
     // output reg flush,

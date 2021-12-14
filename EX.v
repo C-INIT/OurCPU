@@ -6,17 +6,20 @@ module EX(
     input wire [`StallBus-1:0] stall,
 
     input wire [`ID_TO_EX_WD-1:0] id_to_ex_bus,
-
     output wire [`EX_TO_MEM_WD-1:0] ex_to_mem_bus,
-    output wire [`EX_TO_ID_WD-1:0] ex_to_id_bus,
     output wire data_sram_en,
     output wire [3:0] data_sram_wen,
-    //preè¡¨ç¤ºæ•°æ®é€ç»™IDï¼Œæ¥è‡ªå½“å‰IDå‰ä¸€æ¡æŒ‡ä»¤çš„ä¿¡æ¯
-    output wire pre_inst_data_sram_en,
-    output wire [3:0] pre_inst_data_sram_wen,
     output wire [31:0] data_sram_addr,
     output wire [31:0] data_sram_wdata,
-    output wire stallreq_for_ex
+    output wire [`EX_TO_ID_WD-1:0] ex_to_id_bus,
+    output wire stallreq_for_ex,
+    output wire div_ready_to_id,
+    //pre±íÊ¾Êı¾İËÍ¸øID£¬À´×Ôµ±Ç°IDÇ°Ò»ÌõÖ¸ÁîµÄĞÅÏ¢
+    output wire pre_inst_data_sram_en,
+    output wire [3:0] pre_inst_data_sram_wen
+
+
+
 );
 
     reg [`ID_TO_EX_WD-1:0] id_to_ex_bus_r;
@@ -54,6 +57,10 @@ module EX(
     wire lo_read; 
     wire hi_write;
     wire lo_write;
+    wire w_lo_we;
+    wire w_hi_we;
+    wire [31:0]w_lo_i;
+    wire [31:0]w_hi_i;
 
     assign {
         hi_read,        //226
@@ -72,8 +79,8 @@ module EX(
         rf_we,          // 70
         rf_waddr,       // 69:65
         sel_rf_res,     // 64
-        rf_rdata1,         // 63:32 å¯¹åº”IDæ®µçš„rs
-        rf_rdata2          // 31:0 å¯¹åº”IDæ®µçš„rt
+        rf_rdata1,         // 63:32 ¶ÔÓ¦ID¶ÎµÄrs
+        rf_rdata2          // 31:0 ¶ÔÓ¦ID¶ÎµÄrt
     } = id_to_ex_bus_r;
 
     wire [31:0] imm_sign_extend, imm_zero_extend, sa_zero_extend;
@@ -102,10 +109,10 @@ module EX(
                         (lo_read) ?  lo_out_file : alu_result;
 
 
-       //æ–°åŠ çš„ï¼Œå’Œè®¿å­˜æœ‰æœ‰å…³
+       //ĞÂ¼ÓµÄ£¬ºÍ·Ã´æÓĞÓĞ¹Ø
     assign data_sram_en = data_ram_en;
     assign data_sram_wen = data_ram_wen;
-    assign data_sram_addr = ex_result; //lwè¿ç®—å¾—åˆ°ç»“æœ
+    assign data_sram_addr = ex_result; //lwÔËËãµÃµ½½á¹û
     assign data_sram_wdata = rf_rdata2;
 
     assign pre_inst_data_sram_en = data_ram_en;
@@ -113,13 +120,13 @@ module EX(
     
         // MUL part
     wire [63:0] mul_result;
-    wire mul_signed; // æœ‰ç¬¦å·ä¹˜æ³•æ ‡è®°
+    wire mul_signed; // ÓĞ·ûºÅ³Ë·¨±ê¼Ç
     wire [31:0] mul_src1;
     wire [31:0] mul_src2;
     assign inst_mult = (inst[31:26] == 6'b00_0000) & (inst[15:6] == 10'b00000_00000) & (inst[5:0] == 6'b01_1000);
     assign inst_multu = (inst[31:26] == 6'b00_0000) & (inst[15:6] == 10'b00000_00000) & (inst[5:0] == 6'b01_1001);
 
-    assign mul_signed = inst_mult;//åˆ¤æ–­æœ‰ç¬¦å·/æ— ç¬¦å·ä¹˜æ³•
+    assign mul_signed = inst_mult;//ÅĞ¶ÏÓĞ·ûºÅ/ÎŞ·ûºÅ³Ë·¨
     assign mul_src1 =(inst_mult | inst_multu) ? rf_rdata1 : 32'd0;
     assign mul_src2 =(inst_mult | inst_multu) ? rf_rdata2 : 32'd0;
 
@@ -127,9 +134,9 @@ module EX(
     	.clk        (clk            ),
         .resetn     (~rst           ),
         .mul_signed (mul_signed     ),
-        .ina        (mul_src1       ), // ä¹˜æ³•æºæ“ä½œæ•°1
-        .inb        (mul_src2       ), // ä¹˜æ³•æºæ“ä½œæ•°2
-        .result     (mul_result     ) // ä¹˜æ³•ç»“æœ 64bit
+        .ina        (mul_src1       ), // ³Ë·¨Ô´²Ù×÷Êı1
+        .inb        (mul_src2       ), // ³Ë·¨Ô´²Ù×÷Êı2
+        .result     (mul_result     ) // ³Ë·¨½á¹û 64bit
     );
     
     // DIV part
@@ -137,7 +144,7 @@ module EX(
     wire inst_div, inst_divu;
     wire div_ready_i;
     reg stallreq_for_div;
-    assign stallreq_for_ex = stallreq_for_div;
+    assign stallreq_for_ex = stallreq_for_div  &&(div_ready_i==1'b0);
     //WAIT
     assign div_ready_to_id = div_ready_i; 
     assign inst_div = (inst[31:26] == 6'b00_0000) & (inst[15:6] == 10'b00000_00000) & (inst[5:0] == 6'b01_1010);
@@ -157,7 +164,7 @@ module EX(
         .opdata2_i    (div_opdata2_o    ),
         .start_i      (div_start_o      ),
         .annul_i      (1'b0      ),
-        .result_o     (div_result     ), // é™¤æ³•ç»“æœ 64bit
+        .result_o     (div_result     ), // ³ı·¨½á¹û 64bit
         .ready_o      (div_ready_i      )
     );
 
@@ -227,8 +234,12 @@ module EX(
             endcase
         end
     end
-    assign w_hi_we = inst_mult | inst_multu | inst_div | inst_divu;
-    assign w_lo_we = inst_mult | inst_multu | inst_div | inst_divu;
+    wire inst_mthi;
+    wire inst_mtlo;
+    assign inst_mthi    = (inst[31:26]==6'b00_0000)&(inst[20:6]==15'b00000_00000_00000)&(inst[5:0]==6'b01_0001);
+    assign inst_mtlo    = (inst[31:26]==6'b00_0000)&(inst[20:6]==15'b00000_00000_00000)&(inst[5:0]==6'b01_0011);
+    assign w_hi_we = inst_mult | inst_multu | inst_div | inst_divu | inst_mthi;
+    assign w_lo_we = inst_mult | inst_multu | inst_div | inst_divu | inst_mtlo;
     assign w_hi_i = (inst_mult | inst_multu) ?  mul_result[63:32] :
                     (inst_div | inst_divu ) ? div_result[63:32] : 
                     (hi_write) ? rf_rdata1:32'b0;
@@ -248,6 +259,7 @@ module EX(
         rf_waddr,       // 36:32
         ex_result       // 31:0
     };
+
     assign ex_to_id_bus = {
         w_hi_we,        // 103
         w_hi_i,         // 102:71

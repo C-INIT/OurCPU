@@ -28,17 +28,21 @@ module mycpu_core(
     wire [`BR_WD-1:0] br_bus; 
     wire [`DATA_SRAM_WD-1:0] ex_dt_sram_bus;
     wire [`WB_TO_RF_WD-1:0] wb_to_rf_bus;
-    wire [37:0] wb_to_id_bus;   
+    wire [`WB_TO_ID_WD-1:0] wb_to_id_bus;   
     wire [`StallBus-1:0] stall;
-    wire [37:0] ex_to_id_bus;
-    wire [37:0] mem_to_id_bus;
+    wire [`EX_TO_ID_WD-1:0] ex_to_id_bus;
+    wire [`MEM_TO_ID_WD-1:0] mem_to_id_bus;
+  
 
-    //EX缁橧D鍒ゆ柇涓婁竴鏉℃寚浠ゆ槸鍚︽湁load鎴杝tore
+
+    //EX给ID判断上一条指令是否有load或store
     wire pre_inst_data_sram_en;
     wire [3:0] pre_inst_data_sram_wen;
     
     wire stallreq_for_id;
     wire stallreq_for_ex;
+    wire div_ready_to_id;
+    
 
     IF u_IF(
     	.clk             (clk             ),
@@ -66,15 +70,16 @@ module mycpu_core(
         .br_bus          (br_bus          ),
         .ex_to_id_bus    (ex_to_id_bus    ),
         .mem_to_id_bus   (mem_to_id_bus   ),
+        .div_ready_to_id(div_ready_to_id),
         .pre_inst_data_sram_en(pre_inst_data_sram_en),
-        .pre_inst_data_sram_wen(pre_inst_data_sram_wen)
+        .pre_inst_data_sram_wen(pre_inst_data_sram_wen)    
+
     );
 
     EX u_EX(
     	.clk             (clk             ),
         .rst             (rst             ),
         .stall           (stall           ),
-        .stallreq_for_ex (stallreq_for_ex ),
         .id_to_ex_bus    (id_to_ex_bus    ),
         .ex_to_mem_bus   (ex_to_mem_bus   ),
         .data_sram_en    (data_sram_en    ),
@@ -82,6 +87,8 @@ module mycpu_core(
         .data_sram_addr  (data_sram_addr  ),
         .data_sram_wdata (data_sram_wdata ),
         .ex_to_id_bus    (ex_to_id_bus    ),
+        .stallreq_for_ex(stallreq_for_ex),
+        .div_ready_to_id(div_ready_to_id),
         .pre_inst_data_sram_en(pre_inst_data_sram_en),
         .pre_inst_data_sram_wen(pre_inst_data_sram_wen)
     );
@@ -107,6 +114,7 @@ module mycpu_core(
         .debug_wb_rf_wen   (debug_wb_rf_wen   ),
         .debug_wb_rf_wnum  (debug_wb_rf_wnum  ),
         .debug_wb_rf_wdata (debug_wb_rf_wdata )
+ 
     );
 
     CTRL u_CTRL(

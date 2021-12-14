@@ -9,12 +9,14 @@ module WB(
 
     output wire [`WB_TO_RF_WD-1:0] wb_to_rf_bus,
 
-    output wire [37:0] wb_to_id_bus,
+
+    output wire [`WB_TO_ID_WD-1:0] wb_to_id_bus,
     
     output wire [31:0] debug_wb_pc,
     output wire [3:0] debug_wb_rf_wen,
     output wire [4:0] debug_wb_rf_wnum,
-    output wire [31:0] debug_wb_rf_wdata 
+    output wire [31:0] debug_wb_rf_wdata
+
 );
 
     reg [`MEM_TO_WB_WD-1:0] mem_to_wb_bus_r;
@@ -34,14 +36,20 @@ module WB(
         end
     end
 
-    wire w_hi_we;    
-    wire [31:0] w_hi_i;     
-    wire w_lo_we;    
-    wire [31:0] w_lo_i;  
+    wire w_hi_we;
+    wire w_lo_we;
+    wire [31:0] w_hi_i;
+    wire [31:0] w_lo_i;
     wire [31:0] wb_pc;
     wire rf_we;
     wire [4:0] rf_waddr;
     wire [31:0] rf_wdata;
+//    wire aaa;
+//    wire bbb;
+//    wire [31:0]ccc;
+//    wire [31:0]ddd;
+
+
 
     assign {
         w_hi_we,    
@@ -53,7 +61,12 @@ module WB(
         rf_waddr,
         rf_wdata
     } = mem_to_wb_bus_r;
-
+    
+//    assign aaa=w_hi_we;
+//    assign bbb=w_lo_we;
+//    assign ccc=w_hi_i;
+//    assign ddd=w_lo_i;
+    
     // assign wb_to_rf_bus = mem_to_wb_bus_r[`WB_TO_RF_WD-1:0];
     assign wb_to_rf_bus = {
         w_hi_we,    
@@ -75,6 +88,8 @@ module WB(
         rf_wdata
     };
 
+    
+    
     assign debug_wb_pc = wb_pc;
     assign debug_wb_rf_wen = {4{rf_we}};
     assign debug_wb_rf_wnum = rf_waddr;
