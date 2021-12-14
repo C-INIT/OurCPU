@@ -67,6 +67,7 @@ module mycpu_core(
         .mem_to_id_bus   (mem_to_id_bus   ),
         .pre_inst_data_sram_en(pre_inst_data_sram_en),
         .pre_inst_data_sram_wen(pre_inst_data_sram_wen)
+  
     );
 
     EX u_EX(
@@ -106,7 +107,11 @@ module mycpu_core(
         .debug_wb_rf_wnum  (debug_wb_rf_wnum  ),
         .debug_wb_rf_wdata (debug_wb_rf_wdata )
     );
-
+    
+    HILO u_HILO(
+    	.clk               (clk               ),
+        .rst               (rst               )
+    );
     CTRL u_CTRL(
     	.rst   (rst   ),
         .stallreq_for_id(stallreq_for_id),
