@@ -45,6 +45,7 @@ module EX(
     wire [3:0] sel_alu_src2;
     wire data_ram_en;
     wire [3:0] data_ram_wen;
+    wire [3:0] data_ram_readen;
     wire rf_we;
     wire [4:0] rf_waddr;
     wire sel_rf_res;
@@ -63,6 +64,7 @@ module EX(
     wire [31:0]w_hi_i;
 
     assign {
+        data_ram_readen,//230:227
         hi_read,        //226
         lo_read,        //225
         hi_write,       //224
@@ -111,10 +113,23 @@ module EX(
 
        //新加的，和访存有有关
     assign data_sram_en = data_ram_en;
-    assign data_sram_wen = data_ram_wen;
+    assign data_sram_wen =   (data_ram_readen==4'b0101 && ex_result[1:0] == 2'b00 )? 4'b0001 
+                            :(data_ram_readen==4'b0101 && ex_result[1:0] == 2'b01 )? 4'b0010
+                            :(data_ram_readen==4'b0101 && ex_result[1:0] == 2'b10 )? 4'b0100
+                            :(data_ram_readen==4'b0101 && ex_result[1:0] == 2'b11 )? 4'b1000
+                            :(data_ram_readen==4'b0111 && ex_result[1:0] == 2'b00 )? 4'b0011
+                            :(data_ram_readen==4'b0111 && ex_result[1:0] == 2'b10 )? 4'b1100
+                            : data_ram_wen;//写使能信号  
     assign data_sram_addr = ex_result; //lw运算得到结果
-    assign data_sram_wdata = rf_rdata2;
-
+    
+    assign data_sram_wdata = data_sram_wen==4'b1111 ? rf_rdata2 
+                            :data_sram_wen==4'b0001 ? {24'b0,rf_rdata2[7:0]}
+                            :data_sram_wen==4'b0010 ? {16'b0,rf_rdata2[7:0],8'b0}
+                            :data_sram_wen==4'b0100 ? {8'b0,rf_rdata2[7:0],16'b0}
+                            :data_sram_wen==4'b1000 ? {rf_rdata2[7:0],24'b0}
+                            :data_sram_wen==4'b0011 ? {16'b0,rf_rdata2[15:0]}
+                            :data_sram_wen==4'b1100 ? {rf_rdata2[15:0],16'b0}
+                            :32'b0;
     assign pre_inst_data_sram_en = data_ram_en;
     assign pre_inst_data_sram_wen = data_ram_wen; 
     
@@ -247,6 +262,7 @@ module EX(
                     (inst_div | inst_divu ) ? div_result[31:0] :
                     (lo_write) ? rf_rdata1 : 32'b0;
     assign ex_to_mem_bus = {
+        data_ram_readen,//145:142
         w_hi_we,        // 141
         w_hi_i,         // 140:109
         w_lo_we,        // 108

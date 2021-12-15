@@ -165,6 +165,7 @@ module ID(
 
     wire data_ram_en;
     wire [3:0] data_ram_wen;
+    wire [3:0] data_ram_readen;
     
     wire rf_we;
     wire [4:0] rf_waddr;
@@ -222,6 +223,7 @@ module ID(
     wire op_add, op_sub, op_slt, op_sltu;
     wire op_and, op_nor, op_or, op_xor;
     wire op_sll, op_srl, op_sra, op_lui;
+    wire inst_lb,inst_lbu, inst_lh, inst_lhu, inst_sb,  inst_sh;  
 
     decoder_6_64 u0_decoder_6_64(
     	.in  (opcode  ),
@@ -299,13 +301,21 @@ module ID(
     assign inst_divu    = op_d[6'b00_0000]&(inst[15:6]==10'b00000_00000)&(func==6'b01_1011);
     assign inst_mult    = op_d[6'b00_0000]&(inst[15:6]==10'b00000_00000)&(func==6'b01_1000);
     assign inst_multu   = op_d[6'b00_0000]&(inst[15:6]==10'b00000_00000)&(func==6'b01_1001);
+    assign inst_lb      = op_d[6'b10_0000];
+    assign inst_lbu     = op_d[6'b10_0100];
+    assign inst_lh      = op_d[6'b10_0001];
+    assign inst_lhu     = op_d[6'b10_0101];
+    assign inst_sb      = op_d[6'b10_1000];
+    assign inst_sh      = op_d[6'b10_1001];
+    
 
     // rs to reg1 指令不一定显示是rs，可能是base寄存器，但对应rs寄存器
     assign sel_alu_src1[0] = inst_ori | inst_addiu | inst_subu | inst_addu | inst_or | inst_lw | inst_sw | inst_xor
         | inst_and | inst_sltu | inst_slt | inst_slti | inst_sltiu | inst_srlv | inst_beq | inst_bne | inst_bgtz|inst_bltz
         | inst_add | inst_jr | inst_addi | inst_sub|inst_andi| inst_nor|inst_xori|inst_sllv| inst_srav|inst_bgez |inst_blez
         | inst_div | inst_divu | inst_mult | inst_multu
-        | inst_mthi| inst_mtlo ;
+        | inst_mthi| inst_mtlo | inst_sh   | inst_sb   | inst_lhu 
+        | inst_lh | inst_lb | inst_lbu ;
 
     // pc to reg1
     assign sel_alu_src1[1] =inst_jal| inst_j|inst_bltzal|inst_bgezal|inst_jalr ;
@@ -317,10 +327,12 @@ module ID(
     // rt to reg2 不是看到rt就加在这里，有时rt是要存的，而不是读取的，不能加在这里
     assign sel_alu_src2[0] = inst_subu |inst_addu | inst_sll | inst_or | inst_xor | inst_and | inst_sltu
         | inst_slt | inst_srlv | inst_srl | inst_beq | inst_bne | inst_add | inst_sub|inst_nor|inst_sllv |inst_sra| inst_srav
-        | inst_div | inst_divu| inst_mult| inst_multu;
+        | inst_div | inst_divu| inst_mult| inst_multu 
+        |inst_sh | inst_sb | inst_lhu | inst_lh | inst_lb | inst_lbu ;       
     
     // imm_sign_extend to reg2
-    assign sel_alu_src2[1] = inst_lui | inst_addiu | inst_lw | inst_sw | inst_slti | inst_sltiu | inst_addi;
+    assign sel_alu_src2[1] = inst_lui | inst_addiu | inst_lw | inst_sw | inst_slti | inst_sltiu | inst_addi 
+                            | inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu|inst_lb; 
 
     // 32'b8 to reg2
     assign sel_alu_src2[2] = inst_jal|inst_j|inst_bltzal|inst_bgezal|inst_jalr  ;
@@ -330,7 +342,8 @@ module ID(
 
 
 
-    assign op_add = inst_addiu | inst_addu | inst_lw | inst_sw | inst_add |inst_jal|inst_addi|inst_bltzal|inst_bgezal|inst_jalr  ;
+    assign op_add = inst_addiu | inst_addu | inst_lw | inst_sw | inst_add |inst_jal|inst_addi|inst_bltzal|inst_bgezal|inst_jalr 
+                    | inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu |  inst_lb ;
     assign op_sub = inst_subu | inst_sub;
     assign op_slt = inst_slt | inst_slti;
     assign op_sltu = inst_sltu | inst_sltiu;
@@ -351,11 +364,20 @@ module ID(
 
     //和访存有关
     // load and store enable
-    assign data_ram_en = inst_lw | inst_sw;
+    assign data_ram_en = inst_lw | inst_sw | inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu |inst_lb;
 
     // write enable 写存储器则传入1111，不是则是0000，调换顺序会报错
     assign data_ram_wen = inst_sw ? 4'b1111:4'b0000;
 
+    assign data_ram_readen =   inst_lw  ? 4'b1111 
+                             :inst_lb  ? 4'b0001 
+                             :inst_lbu ? 4'b0010
+                             :inst_lh  ? 4'b0011
+                             :inst_lhu ? 4'b0100
+                             :inst_sb  ? 4'b0101
+                             :inst_sh  ? 4'b0111
+                             :4'b0000;
+                             
     
     assign hi_read = inst_mfhi;                     
     assign lo_read = inst_mflo;                         
@@ -399,7 +421,8 @@ module ID(
     assign rf_we = inst_ori | inst_lui | inst_addiu | inst_subu | inst_jal |inst_addu | inst_sll | inst_or | inst_lw
         | inst_xor | inst_and | inst_sltu | inst_slt | inst_slti | inst_sltiu | inst_srlv | inst_srl | inst_add
         | inst_addi | inst_sub|inst_andi|inst_nor|inst_xori|inst_sllv|inst_sra|inst_srav|inst_bltzal |inst_bgezal|inst_jalr
-        | inst_mflo| inst_mfhi;
+        | inst_mflo| inst_mfhi
+        | inst_lb | inst_lhu | inst_lh | inst_lbu;
 
 
     // store in [rd]
@@ -407,7 +430,8 @@ module ID(
         | inst_slt | inst_srlv | inst_srl | inst_add | inst_sub|inst_nor|inst_sllv|inst_sra | inst_srav|inst_jalr
         | inst_mflo| inst_mfhi ;
     // store in [rt] 
-    assign sel_rf_dst[1] = inst_ori | inst_lui | inst_addiu | inst_lw | inst_slti | inst_sltiu | inst_addi|inst_andi|inst_xori;
+    assign sel_rf_dst[1] = inst_ori | inst_lui | inst_addiu | inst_lw | inst_slti | inst_sltiu | inst_addi|inst_andi|inst_xori 
+                          |inst_lhu | inst_lh | inst_lbu | inst_lb;
     // store in [31]
     assign sel_rf_dst[2] = inst_jal|inst_bltzal|inst_bgezal;
 
@@ -417,10 +441,11 @@ module ID(
                     | {5{sel_rf_dst[2]}} & 32'd31;
 
     // 0 from alu_res ; 1 from ld_res
-    //assign sel_rf_res = 1'b0; 
-    assign sel_rf_res = inst_lw; 
+    assign sel_rf_res = 1'b0; 
+//    assign sel_rf_res = inst_lw; 
 
     assign id_to_ex_bus = {
+        data_ram_readen,//230:227
         hi_read,        //226
         lo_read,        //225
         hi_write,       //224
