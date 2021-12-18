@@ -450,8 +450,10 @@ module ID(
         lo_read,        //225
         hi_write,       //224
         lo_write,       //223
+        //ºì
         hi_out_file,    // 222:191
         lo_out_file,    // 190:159
+        //ºì
         id_pc,          // 158:127
         inst,           // 126:95
         alu_op,         // 94:83

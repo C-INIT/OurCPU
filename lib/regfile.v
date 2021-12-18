@@ -32,11 +32,15 @@ module regfile(
     always @ (posedge clk) begin
         if (w_hi_we) begin
             reg_array_hi <= w_hi_i;
+        // end else begin
+        //     reg_array_hi <= 32'b0;
         end
     end
     always @ (posedge clk) begin
         if (w_lo_we) begin
             reg_array_lo <= w_lo_i;
+        // end else begin
+        //     reg_array_lo <= 32'b0;
         end
     end
     wire ex_to_id_we;
@@ -62,11 +66,6 @@ module regfile(
     wire wb_w_lo_we;           
     wire [31:0] wb_w_hi_i;                
     wire [31:0] wb_w_lo_i; 
-  
-
-
-
-
     
     assign {
         ex_w_hi_we,        // 103
