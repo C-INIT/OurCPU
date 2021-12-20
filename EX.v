@@ -59,8 +59,10 @@ module EX(
     wire w_hi_we;
     wire [31:0] w_lo_i;
     wire [31:0] w_hi_i;
+    wire is_lsa;
 
     assign {
+        is_lsa,
         data_ram_readen,//230:227
         hi_read,        //226
         lo_read,        //225
@@ -97,6 +99,7 @@ module EX(
                       sel_alu_src2[2] ? 32'd8 :
                       sel_alu_src2[3] ? imm_zero_extend : rf_rdata2;
     
+
     alu u_alu(
     	.alu_control (alu_op ),
         .alu_src1    (alu_src1    ),

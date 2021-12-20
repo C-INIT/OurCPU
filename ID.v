@@ -28,12 +28,6 @@ module ID(
     input wire pre_inst_data_sram_en,
 
     input wire [3:0] pre_inst_data_sram_wen
-
-
-//    input wire stallreq_for_ex
-    //上一条指令的读写相关操作
-
-
    
 );
 
@@ -53,9 +47,11 @@ module ID(
     wire [31:0] hi_out_file;        
     wire [31:0] lo_out_file;
 
+    wire is_lsa;
 
-    wire aa_en;
-    wire [31:0] aa_inst;
+
+    //wire aa_en;
+    //wire [31:0] aa_inst;
 //    wire aaa;
 //    wire bbb;
 //    wire [31:0]ccc;
@@ -84,9 +80,10 @@ module ID(
     end
     
     
-        //保证inst和PC同步，inst_reg_en为1，则表示inst_reg里面的需要用
+    //保证inst和PC同步，inst_reg_en为1，则表示inst_reg里面的需要用
     always @ (posedge clk) begin
-        if(stall[2]==`Stop && div_ready_to_id==1'b0)begin
+        //if(stall[2]==`Stop && ==div_ready_to_id1'b0)begin
+        if(stall[2]==`Stop)begin
              inst_reg <= inst;
              inst_reg_en <= 1'b1;
         end
@@ -95,14 +92,17 @@ module ID(
             inst_reg_en <= 1'b0;
         end
     end
-    assign aa_en = inst_reg_en;
-    assign aa_inst = inst_reg;
+
+    // always @ (stallreq_for_id) begin
+    //     inst_reg <= inst;
+    //     inst_reg_en <= 1'b1;
+    // end
     //为了保证PC和inst同步，使用inst_reg在出现load读写冲突时储存指令
     //assign inst = inst_sram_rdata;
     //inst暂存器 这个定义放上面了
     // reg [31:0] inst_reg;
     // reg inst_reg_en;
-    assign inst = (aa_en == 1'b0) ? inst_sram_rdata  : aa_inst;
+    assign inst = (inst_reg_en == 1'b0) ? inst_sram_rdata  : inst_reg;
 //      (stall[2]==1'b1 && div_ready_to_id==1'b0) ? ex_id_div_inst
     assign {
         ce,
@@ -223,7 +223,8 @@ module ID(
     wire op_add, op_sub, op_slt, op_sltu;
     wire op_and, op_nor, op_or, op_xor;
     wire op_sll, op_srl, op_sra, op_lui;
-    wire inst_lb,inst_lbu, inst_lh, inst_lhu, inst_sb,  inst_sh;  
+    wire inst_lb,inst_lbu, inst_lh, inst_lhu, inst_sb,  inst_sh;
+    wire inst_lsa;
 
     decoder_6_64 u0_decoder_6_64(
     	.in  (opcode  ),
@@ -307,6 +308,11 @@ module ID(
     assign inst_lhu     = op_d[6'b10_0101];
     assign inst_sb      = op_d[6'b10_1000];
     assign inst_sh      = op_d[6'b10_1001];
+
+    wire [31:0] rdata1_lsa;
+    assign inst_lsa = op_d[6'b01_1100]&(inst[10:8] == 3'b111)&(inst[5:0]==6'b110111);
+    assign is_lsa = inst_lsa;
+    assign rdata1_lsa = inst_lsa ? (rdata1 << ({1'b0,inst[7:6]} + 3'b001)):rdata1;
     
 
     // rs to reg1 指令不一定显示是rs，可能是base寄存器，但对应rs寄存器
@@ -315,10 +321,10 @@ module ID(
         | inst_add | inst_jr | inst_addi | inst_sub|inst_andi| inst_nor|inst_xori|inst_sllv| inst_srav|inst_bgez |inst_blez
         | inst_div | inst_divu | inst_mult | inst_multu
         | inst_mthi| inst_mtlo | inst_sh   | inst_sb   | inst_lhu 
-        | inst_lh | inst_lb | inst_lbu ;
+        | inst_lh | inst_lb | inst_lbu | inst_lsa;
 
     // pc to reg1
-    assign sel_alu_src1[1] =inst_jal| inst_j|inst_bltzal|inst_bgezal|inst_jalr ;
+    assign sel_alu_src1[1] =inst_jal| inst_j|inst_bltzal|inst_bgezal|inst_jalr;
 
     // sa_zero_extend to reg1
     assign sel_alu_src1[2] = inst_sll | inst_srl|inst_sra;
@@ -328,11 +334,11 @@ module ID(
     assign sel_alu_src2[0] = inst_subu |inst_addu | inst_sll | inst_or | inst_xor | inst_and | inst_sltu
         | inst_slt | inst_srlv | inst_srl | inst_beq | inst_bne | inst_add | inst_sub|inst_nor|inst_sllv |inst_sra| inst_srav
         | inst_div | inst_divu| inst_mult| inst_multu 
-        |inst_sh | inst_sb | inst_lhu | inst_lh | inst_lb | inst_lbu ;       
+        |inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu | inst_lsa;   
     
     // imm_sign_extend to reg2
     assign sel_alu_src2[1] = inst_lui | inst_addiu | inst_lw | inst_sw | inst_slti | inst_sltiu | inst_addi 
-                            | inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu|inst_lb; 
+                            | inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu | inst_lb; 
 
     // 32'b8 to reg2
     assign sel_alu_src2[2] = inst_jal|inst_j|inst_bltzal|inst_bgezal|inst_jalr  ;
@@ -343,7 +349,7 @@ module ID(
 
 
     assign op_add = inst_addiu | inst_addu | inst_lw | inst_sw | inst_add |inst_jal|inst_addi|inst_bltzal|inst_bgezal|inst_jalr 
-                    | inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu |  inst_lb ;
+                    | inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu |  inst_lb | inst_lsa;
     assign op_sub = inst_subu | inst_sub;
     assign op_slt = inst_slt | inst_slti;
     assign op_sltu = inst_sltu | inst_sltiu;
@@ -369,7 +375,7 @@ module ID(
     // write enable 写存储器则传入1111，不是则是0000，调换顺序会报错
     assign data_ram_wen = inst_sw ? 4'b1111:4'b0000;
 
-    assign data_ram_readen =   inst_lw  ? 4'b1111 
+    assign data_ram_readen =  inst_lw  ? 4'b1111 
                              :inst_lb  ? 4'b0001 
                              :inst_lbu ? 4'b0010
                              :inst_lh  ? 4'b0011
@@ -422,13 +428,13 @@ module ID(
         | inst_xor | inst_and | inst_sltu | inst_slt | inst_slti | inst_sltiu | inst_srlv | inst_srl | inst_add
         | inst_addi | inst_sub|inst_andi|inst_nor|inst_xori|inst_sllv|inst_sra|inst_srav|inst_bltzal |inst_bgezal|inst_jalr
         | inst_mflo| inst_mfhi
-        | inst_lb | inst_lhu | inst_lh | inst_lbu;
+        | inst_lb | inst_lhu | inst_lh | inst_lbu | inst_lsa;
 
 
     // store in [rd]
     assign sel_rf_dst[0] = inst_subu | inst_addu | inst_sll | inst_or | inst_xor | inst_and | inst_sltu
         | inst_slt | inst_srlv | inst_srl | inst_add | inst_sub|inst_nor|inst_sllv|inst_sra | inst_srav|inst_jalr
-        | inst_mflo| inst_mfhi ;
+        | inst_mflo| inst_mfhi | inst_lsa;
     // store in [rt] 
     assign sel_rf_dst[1] = inst_ori | inst_lui | inst_addiu | inst_lw | inst_slti | inst_sltiu | inst_addi|inst_andi|inst_xori 
                           |inst_lhu | inst_lh | inst_lbu | inst_lb;
@@ -445,6 +451,7 @@ module ID(
 //    assign sel_rf_res = inst_lw; 
 
     assign id_to_ex_bus = {
+        is_lsa,
         data_ram_readen,//230:227
         hi_read,        //226
         lo_read,        //225
@@ -464,7 +471,8 @@ module ID(
         rf_we,          // 70
         rf_waddr,       // 69:65
         sel_rf_res,     // 64
-        rdata1,         // 63:32
+        //rdata1,         // 63:32
+        rdata1_lsa,     // 63:32
         rdata2          // 31:0
     };
 
